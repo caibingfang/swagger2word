@@ -3,6 +3,8 @@
     - 修改 application.yml 文件的<strong> swagger.url </strong>为Swagger Json资源的url地址。
     - 1.4.1 版本后，json 资源的地址可以通过 url 传递，例如：http://127.0.0.1:8080/toWord?url=https://petstore.swagger.io/v2/swagger.json
     - 如果工程内和 url 都配置了资源地址，以 url 上的方案为准。   
+    - url可以直接传递swagger地址
+    
 2. 服务启动后：访问 http://host(主机):port(端口)/toWord，etc：http://127.0.0.1:8080/toWord  
 3. 可以看到网页上生成的类似 word 文档的页面，右键另存为 xxx.doc 文件即可。
 
