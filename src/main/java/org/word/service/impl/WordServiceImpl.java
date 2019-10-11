@@ -35,10 +35,11 @@ public class WordServiceImpl implements WordService {
     private String swaggerUrl;
 
     @Override
-    public List<Table> tableList(String jsonUrl) {
-        jsonUrl = Optional.ofNullable(jsonUrl).orElse(swaggerUrl);
+    public List<Table> tableList(String swaggerUi) {
+        swaggerUi = Optional.ofNullable(swaggerUi).orElse(swaggerUrl);
         List<Table> result = new ArrayList<>();
         try {
+            String jsonUrl = swaggerUi.replace("swagger-ui.html","v2/api-docs");
             String jsonStr = restTemplate.getForObject(jsonUrl, String.class);
             // convert JSON string to Map
             Map<String, Object> map = JsonUtils.readValue(jsonStr, HashMap.class);
@@ -143,26 +144,28 @@ public class WordServiceImpl implements WordService {
                         continue;
                     }
                     Object schema = ((Map) obj).get("schema");
-                    if (((Map) schema).get("$ref") != null) {
-                        //非数组类型返回值
-                        String ref = (String) ((Map) schema).get("$ref");
-                        //解析swagger2 ref链接
-                        ObjectNode objectNode = parseRef(ref, map);
-                        table.setResponseParam(objectNode.toString());
-                        result.add(table);
-                        continue;
-                    }
-                    Object items = ((Map) schema).get("items");
-                    if (items != null && ((Map) items).get("$ref") != null) {
-                        //数组类型返回值
-                        String ref = (String) ((Map) items).get("$ref");
-                        //解析swagger2 ref链接
-                        ObjectNode objectNode = parseRef(ref, map);
-                        ArrayNode arrayNode = JsonUtils.createArrayNode();
-                        arrayNode.add(objectNode);
-                        table.setResponseParam(arrayNode.toString());
-                        result.add(table);
-                        continue;
+                    if(schema!=null) {
+                        if (((Map) schema).get("$ref") != null) {
+                            //非数组类型返回值
+                            String ref = (String) ((Map) schema).get("$ref");
+                            //解析swagger2 ref链接
+                            ObjectNode objectNode = parseRef(ref, map);
+                            table.setResponseParam(objectNode.toString());
+                            result.add(table);
+                            continue;
+                        }
+                        Object items = ((Map) schema).get("items");
+                        if (items != null && ((Map) items).get("$ref") != null) {
+                            //数组类型返回值
+                            String ref = (String) ((Map) items).get("$ref");
+                            //解析swagger2 ref链接
+                            ObjectNode objectNode = parseRef(ref, map);
+                            ArrayNode arrayNode = JsonUtils.createArrayNode();
+                            arrayNode.add(objectNode);
+                            table.setResponseParam(arrayNode.toString());
+                            result.add(table);
+                            continue;
+                        }
                     }
                     result.add(table);
 
