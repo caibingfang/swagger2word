@@ -19,6 +19,7 @@ import org.word.utils.MenuUtils;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * @Author XiuYin.Cui
@@ -35,7 +36,7 @@ public class WordServiceImpl implements WordService {
     private String swaggerUrl;
 
     @Override
-    public List<Table> tableList(String swaggerUi) {
+    public Map<String,List<Table>> tableList(String swaggerUi) {
         swaggerUi = Optional.ofNullable(swaggerUi).orElse(swaggerUrl);
         List<Table> result = new ArrayList<>();
         try {
@@ -43,6 +44,10 @@ public class WordServiceImpl implements WordService {
             String jsonStr = restTemplate.getForObject(jsonUrl, String.class);
             // convert JSON string to Map
             Map<String, Object> map = JsonUtils.readValue(jsonStr, HashMap.class);
+
+            ArrayList<LinkedHashMap> allTags = (ArrayList) map.get("tags");
+            Map<String,String> tagMap = buildTagMap(allTags);
+
             //解析paths
             Map<String, LinkedHashMap> paths = (LinkedHashMap) map.get("paths");
             if (paths != null) {
@@ -121,9 +126,9 @@ public class WordServiceImpl implements WordService {
                     //封装Table
                     Table table = new Table();
                     //是否添加为菜单
-                    if (MenuUtils.isMenu(title)) {
-                        table.setTitle(title);
-                    }
+//                    if (MenuUtils.isMenu(title)) {
+                    table.setTitle(tagMap.get(title));
+//                    }
                     table.setUrl(url);
                     table.setTag(tag);
                     table.setDescription(description);
@@ -174,7 +179,8 @@ public class WordServiceImpl implements WordService {
         } catch (Exception e) {
             log.error("parse error", e);
         }
-        return result;
+        Map<String,List<Table>> tableMap = result.stream().collect(Collectors.groupingBy(Table::getTitle));
+        return tableMap;
     }
 
 
@@ -277,5 +283,19 @@ public class WordServiceImpl implements WordService {
             }
         }
         return paramMap;
+    }
+
+    /**
+     * 讲tags标签包含的数组转为map
+     * @param allTags
+     * @return
+     */
+    private Map<String,String> buildTagMap(ArrayList<LinkedHashMap> allTags) {
+        Map<String,String> tagMap = new HashMap<>();
+        for(LinkedHashMap map:allTags) {
+            tagMap.put((String)map.get("name"),(String)map.get("description"));
+        }
+        return tagMap;
+
     }
 }

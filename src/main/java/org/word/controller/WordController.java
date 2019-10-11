@@ -9,6 +9,7 @@ import org.word.dto.Table;
 import org.word.service.WordService;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Created by XiuYin.Cui on 2018/1/11.
@@ -27,8 +28,8 @@ public class WordController {
     @Deprecated
     @RequestMapping("/toWord")
     public String getWord(Model model, @RequestParam(value = "url", required = false) String url) {
-        List<Table> tables = tableService.tableList(url);
-        model.addAttribute("tables", tables);
+        Map<String,List<Table>> tables = tableService.tableList(url);
+        model.addAttribute("maps", tables);
         return "word";
     }
 }
