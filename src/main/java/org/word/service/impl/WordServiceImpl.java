@@ -138,8 +138,7 @@ public class WordServiceImpl implements WordService {
                     table.setResponseForm(responseForm);
                     table.setRequestType(requestType);
                     table.setResponseList(responseList);
-
-                    table.setRequestParam(JsonUtils.writeJsonStr(buildParamMap(requestList, definitions)));
+                    table.setRequestParam(JsonUtils.prettyString(buildParamMap(requestList, definitions)));
                     LinkedHashMap<String,List<Parameter>> requestLinkedHashMap = new LinkedHashMap<String,List<Parameter>>();
                     for (Request request : requestList) {
                         parseRef1(request.getParamType(), definitions,requestLinkedHashMap);
@@ -163,7 +162,7 @@ public class WordServiceImpl implements WordService {
                             ObjectNode objectNode = parseRef(ref, definitions);
                             LinkedHashMap<String,List<Parameter>> responseLinkedHashMap = new LinkedHashMap<String,List<Parameter>>();
                             parseRef1(ref, definitions,responseLinkedHashMap);
-                            table.setResponseParam(objectNode.toString());
+                            table.setResponseParam(JsonUtils.prettyString(objectNode));
                             table.setResponseStructure(responseLinkedHashMap);
                             result.add(table);
                             continue;
@@ -176,7 +175,10 @@ public class WordServiceImpl implements WordService {
                             ObjectNode objectNode = parseRef(ref, definitions);
                             ArrayNode arrayNode = JsonUtils.createArrayNode();
                             arrayNode.add(objectNode);
-                            table.setResponseParam(arrayNode.toString());
+                            LinkedHashMap<String,List<Parameter>> responseLinkedHashMap = new LinkedHashMap<String,List<Parameter>>();
+                            parseRef1(ref, definitions,responseLinkedHashMap);
+                            table.setResponseStructure(responseLinkedHashMap);
+                            table.setResponseParam(JsonUtils.prettyString(arrayNode));
                             result.add(table);
                             continue;
                         }
