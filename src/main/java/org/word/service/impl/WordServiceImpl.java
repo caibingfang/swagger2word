@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 import org.springframework.web.client.RestTemplate;
+import org.word.dto.Parameter;
 import org.word.dto.Request;
 import org.word.dto.Response;
 import org.word.dto.Table;
@@ -45,11 +46,15 @@ public class WordServiceImpl implements WordService {
             // convert JSON string to Map
             Map<String, Object> map = JsonUtils.readValue(jsonStr, HashMap.class);
 
+            //tag层
             ArrayList<LinkedHashMap> allTags = (ArrayList) map.get("tags");
             Map<String,String> tagMap = buildTagMap(allTags);
 
             //解析paths
             Map<String, LinkedHashMap> paths = (LinkedHashMap) map.get("paths");
+
+            //参数对象的描述
+            Map<String, Object> definitions = (Map<String, Object>) map.get("definitions");
             if (paths != null) {
                 Iterator<Map.Entry<String, LinkedHashMap>> it = paths.entrySet().iterator();
                 while (it.hasNext()) {
@@ -125,10 +130,7 @@ public class WordServiceImpl implements WordService {
 
                     //封装Table
                     Table table = new Table();
-                    //是否添加为菜单
-//                    if (MenuUtils.isMenu(title)) {
                     table.setTitle(tagMap.get(title));
-//                    }
                     table.setUrl(url);
                     table.setTag(tag);
                     table.setDescription(description);
@@ -136,11 +138,15 @@ public class WordServiceImpl implements WordService {
                     table.setResponseForm(responseForm);
                     table.setRequestType(requestType);
                     table.setResponseList(responseList);
-                    table.setRequestParam(JsonUtils.writeJsonStr(buildParamMap(requestList, map)));
+
+                    table.setRequestParam(JsonUtils.writeJsonStr(buildParamMap(requestList, definitions)));
+                    LinkedHashMap<String,List<Parameter>> requestLinkedHashMap = new LinkedHashMap<String,List<Parameter>>();
                     for (Request request : requestList) {
+                        parseRef1(request.getParamType(), definitions,requestLinkedHashMap);
                         request.setParamType(request.getParamType().replaceAll("#/definitions/", ""));
                     }
                     table.setRequestList(requestList);
+                    table.setRequestStructure(requestLinkedHashMap);
                     // 取出来状态是200时的返回值
                     Object obj = responses.get("200");
                     if (obj == null) {
@@ -154,8 +160,11 @@ public class WordServiceImpl implements WordService {
                             //非数组类型返回值
                             String ref = (String) ((Map) schema).get("$ref");
                             //解析swagger2 ref链接
-                            ObjectNode objectNode = parseRef(ref, map);
+                            ObjectNode objectNode = parseRef(ref, definitions);
+                            LinkedHashMap<String,List<Parameter>> responseLinkedHashMap = new LinkedHashMap<String,List<Parameter>>();
+                            parseRef1(ref, definitions,responseLinkedHashMap);
                             table.setResponseParam(objectNode.toString());
+                            table.setResponseStructure(responseLinkedHashMap);
                             result.add(table);
                             continue;
                         }
@@ -164,7 +173,7 @@ public class WordServiceImpl implements WordService {
                             //数组类型返回值
                             String ref = (String) ((Map) items).get("$ref");
                             //解析swagger2 ref链接
-                            ObjectNode objectNode = parseRef(ref, map);
+                            ObjectNode objectNode = parseRef(ref, definitions);
                             ArrayNode arrayNode = JsonUtils.createArrayNode();
                             arrayNode.add(objectNode);
                             table.setResponseParam(arrayNode.toString());
@@ -188,27 +197,21 @@ public class WordServiceImpl implements WordService {
      * 从map中解析出指定的ref
      *
      * @param ref ref链接 例如："#/definitions/PageInfoBT«Customer»"
-     * @param map 是整个swagger json转成map对象
+     * @param definitions 是整个swagger 的所有参数对象描述
      * @return
      * @author fpzhan
      */
-    private ObjectNode parseRef(String ref, Map<String, Object> map) {
+    private ObjectNode parseRef(String ref, Map<String, Object> definitions) {
         ObjectNode objectNode = JsonUtils.createObjectNode();
         if (StringUtils.isNotEmpty(ref) && ref.startsWith("#")) {
             String[] refs = ref.split("/");
-            Map<String, Object> tmpMap = map;
-            //取出ref最后一个参数 start
-            for (String tmp : refs) {
-                if (!"#".equals(tmp)) {
-                    tmpMap = (Map<String, Object>) tmpMap.get(tmp);
-                }
-            }
+            Map<String, Object> objectMap = (Map<String, Object>)definitions.get(refs[2]);
             //取出ref最后一个参数 end
             //取出参数
-            if (tmpMap == null) {
+            if (objectMap == null) {
                 return objectNode;
             }
-            Object properties = tmpMap.get("properties");
+            Object properties = objectMap.get("properties");
             if (properties == null) {
                 return objectNode;
             }
@@ -220,14 +223,14 @@ public class WordServiceImpl implements WordService {
                 if ("array".equals(keyMap.get("type"))) {
                     //数组的处理方式
                     String sonRef = (String) ((Map) keyMap.get("items")).get("$ref");
-                    JsonNode jsonNode = parseRef(sonRef, map);
+                    JsonNode jsonNode = parseRef(sonRef, definitions);
                     ArrayNode arrayNode = JsonUtils.createArrayNode();
                     arrayNode.add(jsonNode);
                     objectNode.set(key, arrayNode);
                 } else if (keyMap.get("$ref") != null) {
                     //对象的处理方式
                     String sonRef = (String) keyMap.get("$ref");
-                    ObjectNode object = parseRef(sonRef, map);
+                    ObjectNode object = parseRef(sonRef, definitions);
                     objectNode.set(key, object);
                 } else {
                     //其他参数的处理方式，string、int
@@ -297,5 +300,55 @@ public class WordServiceImpl implements WordService {
         }
         return tagMap;
 
+    }
+
+
+    private void parseRef1(String ref, Map<String, Object> definitions,LinkedHashMap<String,List<Parameter>> linkedHashMap) {
+
+        if (StringUtils.isNotEmpty(ref) && ref.startsWith("#")) {
+            String[] refs = ref.split("/");
+            Map<String, Object> objectMap = (Map<String, Object>)definitions.get(refs[2]);
+            //取出ref最后一个参数 end
+            //取出参数
+            if (objectMap == null) {
+                return;
+            }
+            Object properties = objectMap.get("properties");
+            if (properties == null) {
+                return;
+            }
+            Map<String, Object> propertiesMap = (Map<String, Object>) properties;
+            Set<String> keys = propertiesMap.keySet();
+
+//
+            List<Parameter> list = new ArrayList<>();
+            //外层的引用先put
+            linkedHashMap.put(refs[2],list);
+            Parameter parameter = null;
+            //遍历key
+            for (String key : keys) {
+                parameter = new Parameter();
+                Map<String, Object> keyMap = (Map) propertiesMap.get(key);
+                parameter.setName(key);
+                parameter.setRemark((String)keyMap.get("description"));
+                if ("array".equals(keyMap.get("type"))) {
+
+
+                    //数组的处理方式
+                    String sonRef = (String) ((Map) keyMap.get("items")).get("$ref");
+                    parameter.setType("array:"+sonRef.replace("#/definitions/",""));
+                    parseRef1(sonRef, definitions,linkedHashMap);
+                } else if (keyMap.get("$ref") != null) {
+                    //对象的处理方式
+                    String sonRef = (String) keyMap.get("$ref");
+                    parameter.setType(sonRef.replace("#/definitions/",""));
+                    parseRef1(sonRef, definitions,linkedHashMap);
+                } else {
+                    parameter.setType((String)keyMap.get("type"));
+                }
+                list.add(parameter);
+            }
+
+        }
     }
 }

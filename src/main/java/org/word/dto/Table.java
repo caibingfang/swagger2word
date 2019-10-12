@@ -2,6 +2,7 @@ package org.word.dto;
 
 import lombok.Data;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 
 /**
@@ -54,12 +55,24 @@ public class Table {
     private List<Response> responseList;
 
     /**
-     * 请求参数
+     * 将入参的对象以表格的方式展示
+     */
+    private LinkedHashMap<String,List<Parameter>> requestStructure;
+
+    /**
+     * 将出参的对象以表格的方式展示
+     */
+    private LinkedHashMap<String,List<Parameter>> responseStructure;
+
+    /**
+     * 请求参数str
      */
     private String requestParam;
 
     /**
-     * 返回参数
+     * 返回参数str
      */
     private String responseParam;
+
+
 }
