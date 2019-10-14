@@ -133,7 +133,7 @@ public class WordServiceImpl implements WordService {
 
                     //封装Table
                     Table table = new Table();
-                    table.setTitle(tagMap.get(title));
+                    table.setTitle(tagMap.get(title)==null?title:tagMap.get(title));
                     table.setUrl(url);
                     table.setTag(tag);
                     table.setDescription(description);

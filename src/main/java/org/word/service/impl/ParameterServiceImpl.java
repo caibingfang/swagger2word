@@ -3,6 +3,7 @@ package org.word.service.impl;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.sun.media.jfxmedia.logging.Logger;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
@@ -60,6 +61,7 @@ public class ParameterServiceImpl implements ParameterService {
 
     @Override
     public ObjectNode parseRef2Json(String ref, Map<String, Object> definitions) {
+        log.info(ref);
         ObjectNode objectNode = JsonUtils.createObjectNode();
         if (StringUtils.isNotEmpty(ref) && ref.startsWith("#")) {
             String[] refs = ref.split("/");
@@ -81,15 +83,32 @@ public class ParameterServiceImpl implements ParameterService {
                 if ("array".equals(keyMap.get("type"))) {
                     //数组的处理方式
                     String sonRef = (String) ((Map) keyMap.get("items")).get("$ref");
-                    JsonNode jsonNode = parseRef2Json(sonRef, definitions);
                     ArrayNode arrayNode = JsonUtils.createArrayNode();
-                    arrayNode.add(jsonNode);
-                    objectNode.set(key, arrayNode);
+                    if(sonRef == null) {
+                        arrayNode.add((String)((Map) keyMap.get("items")).get("type"));
+                        objectNode.set(key, arrayNode);
+                    } else {
+                        if(sonRef.equals(ref)) {
+                            arrayNode.add(refs[2]);
+                        } else {
+                            JsonNode jsonNode = parseRef2Json(sonRef, definitions);
+                            arrayNode.add(jsonNode);
+                        }
+                        objectNode.set(key, arrayNode);
+                    }
+
                 } else if (keyMap.get("$ref") != null) {
                     //对象的处理方式
                     String sonRef = (String) keyMap.get("$ref");
-                    ObjectNode object = parseRef2Json(sonRef, definitions);
-                    objectNode.set(key, object);
+
+                    if(sonRef.equals(ref)) {
+                        objectNode.put(key, refs[2]);
+                    } else {
+                        ObjectNode object = parseRef2Json(sonRef, definitions);
+                        objectNode.set(key, object);
+                    }
+
+
                 } else {
                     //其他参数的处理方式，string、int
                     String str = "";
@@ -122,6 +141,11 @@ public class ParameterServiceImpl implements ParameterService {
             if (properties == null) {
                 return;
             }
+            //防止自我依赖的类
+            if (linkedHashMap.containsKey(refs[2])){
+                return;
+            }
+
             Map<String, Object> propertiesMap = (Map<String, Object>) properties;
 
             List<Parameter> list = new ArrayList<>();
@@ -145,8 +169,13 @@ public class ParameterServiceImpl implements ParameterService {
 
                     //数组的处理方式
                     String sonRef = (String) ((Map) keyMap.get("items")).get("$ref");
-                    parameter.setType("array:"+sonRef.replace("#/definitions/",""));
-                    parseRef2Table(sonRef, definitions,linkedHashMap);
+                    if(sonRef == null) {
+                        parameter.setType("array:"+(String)((Map) keyMap.get("items")).get("type"));
+                    } else {
+                        parameter.setType("array:"+sonRef.replace("#/definitions/",""));
+                        parseRef2Table(sonRef, definitions,linkedHashMap);
+                    }
+
                 } else if (keyMap.get("$ref") != null) {
                     //对象的处理方式
                     String sonRef = (String) keyMap.get("$ref");
