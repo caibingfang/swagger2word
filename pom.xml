@@ -17,6 +17,10 @@
 
     <properties>
         <java.version>1.8</java.version>
+        <finalName>swagger-word</finalName>
+        <daemon.id>launch</daemon.id>
+        <appassembler.target>${project.build.directory}/appassembler</appassembler.target>
+        <appassembler.assemble.directory>${appassembler.target}/jsw/${daemon.id}</appassembler.assemble.directory>
     </properties>
 
     <dependencies>
@@ -86,6 +90,99 @@
                     </execution>
                 </executions>
             </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>appassembler-maven-plugin</artifactId>
+                <version>1.10</version>
+                <executions>
+                    <execution>
+                        <id>generate-jsw-scripts</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>generate-daemons</goal>
+                        </goals>
+                        <configuration>
+                            <repositoryLayout>flat</repositoryLayout>
+                            <!-- copy conf -->
+                            <configurationDirectory>conf</configurationDirectory>
+                            <configurationSourceDirectory>src/main/resources</configurationSourceDirectory>
+                            <copyConfigurationDirectory>true</copyConfigurationDirectory>
+
+                            <logsDirectory>logs</logsDirectory>
+                            <target>${appassembler.target}</target>
+
+                            <daemons>
+                                <daemon>
+                                    <id>${daemon.id}</id>
+                                    <mainClass>org.word.Application</mainClass>
+                                    <generatorConfigurations>
+                                        <generatorConfiguration>
+                                            <generator>jsw</generator>
+                                            <includes>
+                                                <include>linux-x86-64</include>
+                                                <include>windows-x86-64</include>
+                                            </includes>
+
+                                            <configuration>
+                                                <property>
+                                                    <name>configuration.directory.in.classpath.first</name>
+                                                    <value>conf</value>
+                                                </property>
+                                                <property>
+                                                    <name>wrapper.logfile</name>
+                                                    <value>logs/wrapper.log</value>
+                                                </property>
+                                            </configuration>
+
+                                        </generatorConfiguration>
+                                    </generatorConfigurations>
+
+                                    <platforms>
+                                        <platform>jsw</platform>
+                                    </platforms>
+
+                                    <jvmSettings>
+                                        <initialMemorySize>2048M</initialMemorySize>
+                                        <maxMemorySize>2048M</maxMemorySize>
+
+                                        <extraArguments>
+                                            <extraArgument>-server</extraArgument>
+                                            <extraArgument>-XX:+HeapDumpOnOutOfMemoryError</extraArgument>
+                                            <extraArgument>-XX:ErrorFile="logs/java_error_%p.log"</extraArgument>
+                                            <extraArgument>-XX:+PrintGC</extraArgument>
+                                            <extraArgument>-XX:+PrintGCDetails</extraArgument>
+                                            <extraArgument>-XX:+PrintGCTimeStamps</extraArgument>
+                                            <extraArgument>-Xloggc:logs/gc.log</extraArgument>
+                                        </extraArguments>
+                                    </jvmSettings>
+                                </daemon>
+                            </daemons>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>2.2.1</version>
+                <configuration>
+                    <finalName>${finalName}</finalName>
+                    <appendAssemblyId>false</appendAssemblyId>
+                    <descriptors>
+                        <descriptor>src/assembly/assembly-descriptor.xml</descriptor>
+                    </descriptors>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>make-assembly</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
         </plugins>
     </build>
 </project>

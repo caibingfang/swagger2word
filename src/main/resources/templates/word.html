@@ -121,16 +121,19 @@
 
                 <table border="1" cellspacing="0" cellpadding="0" width="100%">
                     <tr class="bg">
-                        <td colspan="5" th:text="${requestStructure.key}"></td>
+                        <td colspan="6" th:text="${requestStructure.key}"></td>
                     </tr>
                     <tr class="bg" align="center">
                         <td>名称</td>
                         <td>描述</td>
+                        <td>非空</td>
                         <td colspan="3">类型</td>
                     </tr>
                     <tr align="center" th:each="requestParamter:${requestStructure.value}">
                         <td th:text="${requestParamter.name}"></td>
                         <td th:text="${requestParamter.remark}"></td>
+                        <td th:if="${requestParamter.require}">是</td>
+                        <td th:if="${not requestParamter.require}">否</td>
                         <td colspan="3" th:text="${requestParamter.type}"></td>
                     </tr>
                 </table>
