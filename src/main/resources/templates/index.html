@@ -1,6 +1,11 @@
 <!DOCTYPE html>
-<html>
+<html xmlns:th="http://www.thymeleaf.org">
 <body>
 <h2>Hello Swagger2word !</h2>
+<form th:action="@{/export}" th:method="post" name="form1" >
+<input type="text" class="form-control1" id="url" name="url" style="width:512px; height:32px;">
+
+<a  style="cursor:pointer; text-decoration: underline;" onclick="document.form1.submit();">导出word</a>
+</form>
 </body>
 </html>
